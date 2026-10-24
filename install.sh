@@ -20,6 +20,12 @@ ln -sf "$PROJECT_DIR/guangut-vpn" /usr/bin/guangut
 ln -sf "$PROJECT_DIR/guangut-vpn" /usr/bin/guangut-vpn
 echo "   ✓ Linked /usr/bin/guangut and /usr/local/bin/guangut"
 
+if [[ -d /usr/share/applications ]]; then
+    cp -f "$PROJECT_DIR/guangutvpn.desktop" /usr/share/applications/
+    chmod +x /usr/share/applications/guangutvpn.desktop
+    echo "   ✓ Installed Linux Desktop Application icon (/usr/share/applications/guangutvpn.desktop)"
+fi
+
 echo "📦 [2/3] Installing Linux VPN tunnel packages (openvpn, wireguard-tools, openresolv)..."
 # Ignore broken third-party repo GPG errors (like packages.microsoft.com) during apt update
 apt-get update -y || true

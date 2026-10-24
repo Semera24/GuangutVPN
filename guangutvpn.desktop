@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=GuangutVPN
+Comment=Linux US & Global Kernel VPN Client & Control Center
+Exec=guangut gui
+Icon=security-high
+Terminal=false
+Categories=Network;Security;VPN;
+StartupNotify=true

@@ -118,7 +118,12 @@ def patch_ovpn_config(
     ping_int, ping_exit = keepalive
     proto = server.get("proto", "udp")
 
-    auth_file_path = ensure_default_auth_file()
+    if "vpnbook" in server.get("host", "").lower():
+        from guangut.sources import VPNBOOK_CREDS_FILE, fetch_vpnbook_live_credentials
+        fetch_vpnbook_live_credentials()
+        auth_file_path = VPNBOOK_CREDS_FILE
+    else:
+        auth_file_path = ensure_default_auth_file()
 
     patch_block = [
         "",

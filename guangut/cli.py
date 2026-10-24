@@ -512,6 +512,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_gui.add_argument("--no-browser", action="store_true", help="Do not auto-open browser")
     p_gui.set_defaults(fn=lambda a: __import__("guangut.gui", fromlist=["run_web_gui"]).run_web_gui(port=a.port, open_browser=not a.no_browser))
 
+    # watch
+    p_watch = sub.add_parser("watch", help="Start background health watchdog & auto-failover daemon")
+    p_watch.add_argument("--country", "-c", default="US", help="Target country (default: US)")
+    p_watch.add_argument("--us-region", "-r", help="Target US region")
+    p_watch.add_argument("--state", "-s", help="Target US state")
+    p_watch.add_argument("--interval", type=int, default=5, help="Check interval in seconds")
+    p_watch.set_defaults(fn=lambda a: __import__("guangut.watchdog", fromlist=["run_watchdog_loop"]).run_watchdog_loop(country=a.country, us_region=a.us_region, state=a.state, check_interval=a.interval))
+
+    # browser
+    p_browser = sub.add_parser("browser", help="Launch browser through VPN with ipinfo check")
+    p_browser.add_argument("--url", default="https://ipinfo.io", help="URL to open")
+    p_browser.set_defaults(fn=lambda a: __import__("guangut.splittunnel", fromlist=["launch_browser_through_vpn"]).launch_browser_through_vpn(url=a.url))
+
     return p
 
 

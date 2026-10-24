@@ -25,6 +25,7 @@ from guangut.regions import (
     match_us_region,
     normalize_us_state,
 )
+from guangut.sources import download_vpnbook_us_profiles
 
 UA = f"{__app_name__}/{__version__} (Linux Debian 13; US-Regional VPN Client)"
 
@@ -615,11 +616,15 @@ def refresh_server_list(enrich: bool = True) -> List[dict]:
 
     ref_servers = load_reference_ovpn_pool()
     custom = load_custom_profiles()
+    try:
+        vpnbook_servers = download_vpnbook_us_profiles()
+    except Exception:
+        vpnbook_servers = []
 
     # Deduplicate by (ip, port, proto)
     combined: List[dict] = []
     seen = set()
-    for srv in custom + vpngate_servers + ref_servers:
+    for srv in custom + vpnbook_servers + vpngate_servers + ref_servers:
         key = (srv.get("ip"), srv.get("port"), srv.get("proto"))
         if key not in seen:
             seen.add(key)
