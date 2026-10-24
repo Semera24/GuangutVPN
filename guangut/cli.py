@@ -525,6 +525,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_browser.add_argument("--url", default="https://ipinfo.io", help="URL to open")
     p_browser.set_defaults(fn=lambda a: __import__("guangut.splittunnel", fromlist=["launch_browser_through_vpn"]).launch_browser_through_vpn(url=a.url))
 
+    # adblock
+    p_adblock = sub.add_parser("adblock", help="Toggle GuangutShield DNS ad and malware blocker")
+    p_adblock.add_argument("--disable", action="store_true", help="Disable adblock")
+    p_adblock.set_defaults(fn=lambda a: __import__("guangut.adblock", fromlist=["remove_adblock_protection", "apply_adblock_protection"]).remove_adblock_protection() if a.disable else print(__import__("guangut.adblock", fromlist=["apply_adblock_protection"]).apply_adblock_protection()[1]))
+
+    # tray
+    p_tray = sub.add_parser("tray", help="Launch desktop system tray status indicator")
+    p_tray.set_defaults(fn=lambda a: __import__("guangut.tray", fromlist=["run_tray"]).run_tray())
+
     return p
 
 

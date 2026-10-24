@@ -191,8 +191,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <div class="stat-row"><span class="label">Verified Location</span><span class="value" id="st-loc">&mdash;</span></div>
       <div class="stat-row"><span class="label">Exit ISP / Org</span><span class="value" id="st-isp">&mdash;</span></div>
       <div class="stat-row"><span class="label">Connected Relay</span><span class="value" id="st-relay">&mdash;</span></div>
+      <div class="stat-row"><span class="label">GuangutShield (Ad/Malware Blocker)</span><span class="value" id="st-shield" style="color:var(--accent-green);">Active (0ms DNS)</span></div>
       <div class="btn-group" style="margin-top:16px;">
         <button class="success" onclick="autoConnectBest()">&gt;&gt; Auto-Connect Fastest Filtered Server</button>
+        <button onclick="toggleAdBlock()">🛡️ Toggle AdBlock</button>
         <button onclick="loadStatus()">Refresh Status</button>
         <button class="danger" onclick="disconnectVpn()">[X] Disconnect Tunnel</button>
       </div>
@@ -404,6 +406,14 @@ async function disconnectVpn() {
   loadStatus();
 }
 
+async function toggleAdBlock() {
+  setLog('🛡️ Toggling GuangutShield Ad & Tracker blocker...');
+  const r = await fetch('/api/adblock', { method: 'POST' });
+  const d = await r.json();
+  setLog(d.message);
+  document.getElementById('st-shield').textContent = d.active ? 'Active (0ms DNS)' : 'Disabled';
+}
+
 loadStatus();
 loadServers();
 setInterval(loadStatus, 10000);
@@ -496,6 +506,22 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         if parsed.path == "/api/disconnect":
             ok, msg = disconnect_vpn()
             self._send_json({"ok": ok, "message": msg})
+            return
+
+        if parsed.path == "/api/adblock":
+            from guangut.adblock import apply_adblock_protection, remove_adblock_protection
+            try:
+                with open("/etc/hosts", "r") as f:
+                    active = "GuangutShield" in f.read()
+            except Exception:
+                active = False
+
+            if active:
+                remove_adblock_protection()
+                self._send_json({"ok": True, "active": False, "message": "GuangutShield disabled."})
+            else:
+                ok, msg = apply_adblock_protection()
+                self._send_json({"ok": ok, "active": True, "message": msg})
             return
 
         if parsed.path == "/api/connect":
