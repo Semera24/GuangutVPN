@@ -28,3 +28,4 @@ def launch_browser_through_vpn(browser: str = "google-chrome", url: str = "https
     else:
         subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return True
+

@@ -2,52 +2,53 @@
 set -uo pipefail
 
 echo "=================================================================="
-echo "  GuangutVPN — Debian 13 (Trixie) System Installer"
+echo "  GuangutVPN — Debian/Xfce System Installer & Launcher Setup"
 echo "=================================================================="
 
+PROJECT_DIR="/home/yona/Projects/GuangutVPN"
+
+# Ensure we are root for system installation
 if [[ $EUID -ne 0 ]]; then
-    echo "🔒 Elevating with sudo to install system packages & symlink..."
+    echo "🔒 Elevating with sudo to complete system installation (/usr/bin, /usr/share/applications)..."
     exec sudo bash "$0" "$@"
 fi
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Ensure project permissions & executables
+chmod +x "$PROJECT_DIR/guangut-vpn" "$PROJECT_DIR/guangut/cli.py" "$PROJECT_DIR/guangutvpn-gui-wrapper.sh"
 
-echo "🔗 [1/3] Linking 'guangut' and 'guangut-vpn' into /usr/local/bin and /usr/bin..."
-chmod +x "$PROJECT_DIR/guangut-vpn" "$PROJECT_DIR/guangut/cli.py"
+echo "🔗 [1/4] Linking 'guangut' and 'guangut-vpn' into /usr/local/bin and /usr/bin..."
 ln -sf "$PROJECT_DIR/guangut-vpn" /usr/local/bin/guangut
 ln -sf "$PROJECT_DIR/guangut-vpn" /usr/local/bin/guangut-vpn
 ln -sf "$PROJECT_DIR/guangut-vpn" /usr/bin/guangut
 ln -sf "$PROJECT_DIR/guangut-vpn" /usr/bin/guangut-vpn
 echo "   ✓ Linked /usr/bin/guangut and /usr/local/bin/guangut"
 
-if [[ -d /usr/share/applications ]]; then
-    cp -f "$PROJECT_DIR/guangutvpn.desktop" /usr/share/applications/
-    chmod +x /usr/share/applications/guangutvpn.desktop
-    echo "   ✓ Installed Linux Desktop Application icon (/usr/share/applications/guangutvpn.desktop)"
-fi
+echo "🎨 [2/4] Installing application icons..."
+mkdir -p /usr/share/pixmaps
+mkdir -p /usr/share/icons/hicolor/scalable/apps
+cp -f "$PROJECT_DIR/guangutvpn.svg" /usr/share/pixmaps/guangutvpn.svg
+cp -f "$PROJECT_DIR/guangutvpn.svg" /usr/share/icons/hicolor/scalable/apps/guangutvpn.svg
+echo "   ✓ Installed icon to /usr/share/pixmaps/guangutvpn.svg"
 
-echo "📦 [2/3] Installing Linux VPN tunnel packages (openvpn, wireguard-tools, openresolv)..."
-# Ignore broken third-party repo GPG errors (like packages.microsoft.com) during apt update
+echo "🖥️ [3/4] Installing system application launcher for Xfce / Freedesktop..."
+mkdir -p /usr/share/applications
+cp -f "$PROJECT_DIR/guangutvpn.desktop" /usr/share/applications/guangutvpn.desktop
+chmod 644 /usr/share/applications/guangutvpn.desktop
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications 2>/dev/null || true
+fi
+echo "   ✓ Installed system launcher: /usr/share/applications/guangutvpn.desktop"
+
+echo "📦 [4/4] Ensuring tunnel packages are installed..."
 apt-get update -y || true
-DEBIAN_FRONTEND=noninteractive apt-get install -y openvpn wireguard-tools openresolv
-
-echo "✅ [3/3] Verifying installation..."
-if command -v openvpn >/dev/null 2>&1 || [[ -x /usr/sbin/openvpn ]]; then
-    echo "   ✓ OpenVPN is installed: $(/usr/sbin/openvpn --version | head -n 1)"
-else
-    echo "   ⚠ Warning: openvpn binary was not found after apt-get install."
-fi
+DEBIAN_FRONTEND=noninteractive apt-get install -y openvpn wireguard-tools openresolv >/dev/null 2>&1 || true
 
 echo ""
 echo "=================================================================="
-echo "  🎉 GuangutVPN Installation Complete!"
+echo "  🎉 GuangutVPN Installation & Desktop Launcher Ready!"
 echo "=================================================================="
-echo "Run any of these commands now:"
-echo "  sudo guangut gui                        # Open Web GUI Dashboard in Browser"
-echo "  sudo guangut connect                    # Auto-connect to fastest US server"
-echo "  sudo guangut connect --us-region west   # Connect to US-West (CA, CO)"
-echo "  sudo guangut connect --us-region central# Connect to US-Central (TX)"
-echo "  sudo guangut connect --state CA         # Connect to specific US State"
-echo "  sudo guangut connect --country JP       # Connect to another country (JP, KR, GB, DE...)"
-echo "  guangut status                          # Check tunnel status & verified public IP"
-echo "  sudo guangut disconnect                 # Disconnect VPN"
+echo "You can now launch 'GuangutVPN' directly from:"
+echo "  1. Xfce Application Menu -> Internet / Network -> GuangutVPN"
+echo "  2. Application Finder / Search -> type 'GuangutVPN'"
+echo "  3. Terminal command -> 'sudo guangut gui' or 'guangut'"

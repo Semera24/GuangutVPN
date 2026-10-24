@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+    <linearGradient id="lockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#22c55e" />
+    </linearGradient>
+  </defs>
+  <!-- Shield Outer -->
+  <path d="M64 8 L114 28 C114 74 64 120 64 120 C64 120 14 74 14 28 Z" fill="url(#shieldGrad)" stroke="#38bdf8" stroke-width="4" stroke-linejoin="round"/>
+  <!-- Lock Shackle -->
+  <path d="M48 54 V42 C48 33 55 26 64 26 C73 26 80 33 80 42 V54" fill="none" stroke="#f1f5f9" stroke-width="8" stroke-linecap="round"/>
+  <!-- Lock Body -->
+  <rect x="42" y="54" width="44" height="36" rx="8" fill="url(#lockGrad)" stroke="#f1f5f9" stroke-width="3"/>
+  <!-- Keyhole -->
+  <circle cx="64" cy="68" r="5" fill="#0b0f19" />
+  <polygon points="61,70 67,70 65,82 63,82" fill="#0b0f19" />
+</svg>
