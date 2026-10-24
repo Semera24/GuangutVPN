@@ -1,0 +1,11 @@
+{
+  "antigravity.agent.autoApprove": true,
+  "antigravity.toolExecutionPolicy": "always-proceed",
+  "antigravity.terminal.autoApprove": true,
+  "antigravity.sandbox.enabled": false,
+  "antigravity.internetAccessPolicy": "allow",
+  "antigravity.fileAccessPolicy": "allow",
+  "gemini.agent.autoApprove": true,
+  "chat.tools.autoApprove": true
+}
+

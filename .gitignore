@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
+venv/
+
+# Cache & session files
+.cache/
+*.tmp
+
+# Reference repos cloned for development (to avoid nested git repos)
+reference/
+
+# VS Code local state
+.vscode/*
+!.vscode/settings.json
