@@ -40,6 +40,14 @@ if command -v update-desktop-database >/dev/null 2>&1; then
 fi
 echo "   ✓ Installed system launcher: /usr/share/applications/guangutvpn.desktop"
 
+# Allow passwordless sudo for the OpenVPN tunnel daemon so background GUI clicks never block on passwords
+echo "🔑 Enabling passwordless tunnel execution for 'openvpn' and 'guangut'..."
+cat << 'SUDO_EOF' > /etc/sudoers.d/guangutvpn
+ALL ALL=(ALL) NOPASSWD: /usr/sbin/openvpn, /usr/bin/openvpn, /usr/local/bin/guangut, /usr/bin/guangut, /home/yona/Projects/GuangutVPN/guangut-vpn, /usr/bin/pkill, /usr/bin/kill
+SUDO_EOF
+chmod 440 /etc/sudoers.d/guangutvpn
+echo "   ✓ Configured /etc/sudoers.d/guangutvpn"
+
 echo "📦 [4/4] Ensuring tunnel packages are installed..."
 apt-get update -y || true
 DEBIAN_FRONTEND=noninteractive apt-get install -y openvpn wireguard-tools openresolv >/dev/null 2>&1 || true

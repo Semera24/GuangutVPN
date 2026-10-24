@@ -9,5 +9,4 @@ Icon=/usr/share/pixmaps/guangutvpn.svg
 Terminal=false
 Categories=Network;Security;VPN;
 Keywords=vpn;wireguard;openvpn;guangut;network;security;
-StartupNotify=true
-StartupWMClass=GuangutVPN
+StartupNotify=false
