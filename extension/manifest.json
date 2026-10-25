@@ -12,6 +12,7 @@
   "host_permissions": [
     "http://127.0.0.1:8765/*",
     "http://localhost:8765/*",
+    "https://raw.githubusercontent.com/*",
     "https://ipwho.is/*",
     "https://ipinfo.io/*"
   ],
@@ -33,3 +34,4 @@
     "128": "icons/icon128.png"
   }
 }
+

@@ -17,6 +17,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         badge.className = "badge connected";
         badge.textContent = "[ONLINE]";
         extMode.textContent = `${res.targetCountry || "US"} (${res.targetRegion || res.targetState || "all"})`;
+        if (res.activeProxy) {
+          setLog(`Routing via: ${res.activeProxy}`);
+        }
       } else {
         badge.className = "badge disconnected";
         badge.textContent = "[OFFLINE]";
@@ -82,3 +85,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   refreshUI();
 });
+

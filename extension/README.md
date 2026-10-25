@@ -40,3 +40,4 @@ extension/
 ├── icons/              # Extension icons (16px, 48px, 128px)
 └── README.md           # Extension installation guide
 ```
+
