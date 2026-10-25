@@ -1,100 +1,80 @@
-# GuangutVPN — Architecture & Engineering Plan (`vpnPlan.md`)
+# 🛡️ GuangutVPN — Full System Architecture & Engineering Plan (`vpnPlan.md`)
 
-## 1. Platform Selection: Native Linux VPN vs. Chrome Extension
+## 1. Executive Summary & Vision
 
-We chose a **Native Linux-Based VPN** (built on **OpenVPN** + **WireGuard** with an optional local GUI/TUI dashboard) over a Chrome Extension for the following technical reasons:
+**GuangutVPN** is a self-hosted, 100% free and open-source Linux kernel VPN system engineered specifically for **Debian GNU/Linux 13 (Trixie)** and modern Linux desktop environments (Xfce, GNOME, KDE).
 
-| Feature | Chrome Extension ("VPN") | Native Linux VPN (GuangutVPN) |
+Instead of paying \$40–\$120/year for commercial VPN services (NordVPN, ExpressVPN, ProtonVPN), GuangutVPN delivers equivalent or superior commercial-grade privacy, zero-latency ad blocking, and complete layer-3 traffic encryption with **no accounts, no subscriptions, and zero tracking**.
+
+---
+
+## 2. Commercial VPN Feature Benchmark vs. GuangutVPN
+
+| Commercial Feature (Nord / Express / Proton / Surfshark) | GuangutVPN Architecture Implementation | Module |
 | :--- | :--- | :--- |
-| **Traffic Scope** | Browser HTTP/HTTPS/SOCKS5 proxy only (`chrome.proxy`). Terminal (`curl`, `git`, `ssh`) and other apps bypass it. | **True Layer-3 Kernel Tunnel (`tun0` / `wg0`)**. Encrypts and routes **100% of system traffic** (browsers, terminal, apps, background daemons). |
-| **UDP & WebRTC** | Easily leaks real IP via WebRTC or non-browser UDP sockets. | Captures all TCP, UDP, and ICMP packets at the Linux routing table level. |
-| **DNS Security** | Subject to OS-level DNS fallback leaks. | Enforces strict tunnel-only DNS via `systemd-resolved` / `/etc/resolv.conf` lock + `nftables` firewall rules. |
-| **Kill Switch** | Impossible if browser crashes or extension reloads. | Kernel-enforced `nftables` Kill Switch that blocks non-tunnel traffic if the VPN drops. |
+| **Full Kernel Layer-3 Tunneling** | Native OpenVPN 2.6+ (`tun0`) and WireGuard (`wg0`) kernel interfaces | `guangut/tunnel.py`, `guangut/wireguard.py` |
+| **All-US & US Regional Targeting** | Multi-threaded GeoIP classifier covering US-West, US-Central, US-East, and all 50 states | `guangut/regions.py`, `guangut/harvester.py` |
+| **Global Country Expansion** | Dynamic harvesting of 15+ countries (`JP`, `KR`, `GB`, `DE`, `FR`, `TH`, `VN`, `RO`, etc.) | `guangut/harvester.py` |
+| **NetShield / CleanWeb Ad & Malware Blocker** | **GuangutShield**: Zero-latency DNS sinkhole blocking ads, trackers, and telemetry | `guangut/adblock.py` |
+| **Automatic Watchdog & Failover** | Background daemon supervising tunnel health (`tun0` + ICMP RTT) with auto-reconnect | `guangut/watchdog.py` |
+| **Firewall Kill Switch** | Kernel `nftables` output filter dropping all unencrypted non-tunnel packets | `guangut/security.py` |
+| **DNS Leak Guard** | Automated `systemd-resolved` interface binding (`resolvectl`) + `/etc/resolv.conf` lock | `guangut/security.py` |
+| **Desktop System Tray Status Pill** | Native GTK3 taskbar applet with dynamic icon and right-click quick-connect menu | `guangut/tray.py` |
+| **Local Web Control Center** | Zero-dependency dark-mode Web GUI dashboard (`http://127.0.0.1:8765`) | `guangut/gui.py` |
+| **Dynamic Credentials Scraper** | Automatic scraping of fresh passwords from VPN providers (e.g. VPNBook) | `guangut/sources.py` |
+| **Dedicated Browser Runner** | Browser split-tunnel invocation via `guangut browser` | `guangut/splittunnel.py` |
 
 ---
 
-## 2. Open-Source Foundation & Reverse-Engineering Strategy
+## 3. Reverse-Engineering Strategies & Solved Technical Hurdles
 
-Instead of paying for a commercial VPN or starting from scratch without servers, **GuangutVPN** combines and reverse-engineers three proven open-source ecosystems:
+### 3.1 OpenVPN 2.6+ / Debian 13 Compatibility
+- **Problem**: Modern OpenVPN 2.6+ on Debian 13 strictly rejects legacy cipher negotiation (`--cipher AES-128-CBC` or `AES-256-CBC`) used by SoftEther academic and community relays with `OPTIONS ERROR: failed to negotiate cipher with server`.
+- **Solution (`guangut/patcher.py`)**: Our automated config patcher parses decoded `.ovpn` profiles, strips deprecated Windows directives (`win-sys`, `register-dns`, `route-method`), injects `data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-256-CBC:AES-128-CBC`, sets `data-ciphers-fallback`, generates `/tmp/guangutvpn-auth.txt` credentials (`vpn`/`vpn`), and configures `tls-cipher DEFAULT:@SECLEVEL=0`.
 
-1. **Base Client & Harvester Reference (`sajadinmaker/vpnbox` & `Cypher-Monarch/CypherGate`)**:
-   - Open-source Python Linux VPN clients that harvest live, volunteer-run and academic VPN relays from the **University of Tsukuba VPN Gate API** (`http://www.vpngate.net/api/iphone/`) and community WireGuard/OpenVPN feeds.
-2. **Protocol & Config Reverse-Engineering (The OpenVPN 2.6+ / Debian 13 Fix)**:
-   - **The Problem**: Most open-source free VPN scripts and raw `.ovpn` files fail on modern Linux (like **Debian 13 Trixie** with OpenVPN 2.6+) because legacy servers advertise `cipher AES-128-CBC` or `AES-256-CBC`, which OpenVPN 2.6 rejects by default (`OPTIONS ERROR: failed to negotiate cipher`), and use deprecated `tls-cipher` or missing key-direction parameters.
-   - **Our Reverse-Engineering Fix**: GuangutVPN includes an automated **OVPN Binary/Config Patcher Engine** that inspects decoded Base64 `.ovpn` payloads in memory and injects:
-     - `data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC:AES-256-CBC`
-     - `data-ciphers-fallback AES-128-CBC`
-     - Modernized TLS version constraints (`tls-version-min 1.0` where required by legacy relays) and explicit DNS leak prevention hooks.
-3. **US Regional Geolocation & Multi-Country Engine**:
-   - **Primary Mode (All-US & US Regional Targeting)**: Queries live US nodes and enriches each node's IP via GeoIP lookup (`ip-api.com` / `ipinfo.io` / local GeoIP cache) to classify US servers by **State, City, and Region** (e.g., *US-East: New York, Virginia, Florida*; *US-Central: Texas, Illinois*; *US-West: California, Washington, Oregon*).
-   - **Secondary Mode (Global Country Selector)**: Allows switching to any available country worldwide (`JP`, `KR`, `GB`, `DE`, `CA`, `NL`, etc.) on demand.
-   - **Custom / Self-Hosted WireGuard & OpenVPN Import**: Supports dropping in any custom `.conf` (WireGuard) or `.ovpn` profile (e.g., from ProtonVPN Free or self-hosted cloud nodes).
+### 3.2 GeoIP Blocking & Fast Latency Pre-Probing
+- **Problem**: Legacy scripts relied on unauthenticated HTTP `ip-api.com`, which times out or rate-limits on Linux systems.
+- **Solution (`guangut/harvester.py`)**: Replaced with multi-threaded HTTPS GeoIP (`ipwho.is` + `ipinfo.io`) backed by a persistent cache (`~/.cache/guangutvpn/geoip_cache.json`). Integrated parallel TCP/UDP socket probing to test real latency from your machine before OpenVPN starts.
+
+### 3.3 Silent Desktop Launcher Failures in Xfce
+- **Problem**: Launching root-requiring VPN commands from desktop menus caused terminal windows to briefly blink and vanish without prompting.
+- **Solution (`guangutvpn-gui-wrapper.sh`)**: The GUI runner daemonizes the Web GUI in the background using `nohup`, handles desktop elevation via `sudoers.d` integration, and opens the user's default browser directly without any terminal flashing.
 
 ---
 
-## 3. System Architecture
+## 4. System Architecture Diagram
 
 ```mermaid
 flowchart TD
-    UI["GuangutVPN CLI / TUI & Local Web GUI"] --> Core["Core VPN Controller (Python 3)"]
-    
-    subgraph Discovery ["1. Node Discovery & GeoIP Engine"]
-        API1["VPN Gate API / Mirror Feeds"] --> Harvester["Async Node Harvester"]
-        API2["Custom WireGuard / OVPN Profiles"] --> Harvester
-        Harvester --> GeoIP["US State/Region & Global GeoIP Classifier"]
-        GeoIP --> Prober["Multi-Threaded TCP/Ping Latency Prober"]
+    subgraph UI ["User Interfaces"]
+        Tray["GTK3 System Tray Applet\n(guangut tray)"]
+        WebGUI["Local Web Dashboard\n(http://127.0.0.1:8765)"]
+        CLI["Rich Terminal CLI / TUI\n(guangut connect / menu)"]
+        AppFinder["Xfce / Desktop Launcher\n(GuangutVPN.desktop)"]
     end
 
-    Core --> Discovery
-    
-    subgraph Patcher ["2. Reverse-Engineering & Config Patcher"]
-        Prober --> Decoder["Base64 OVPN / WG Config Decoder"]
-        Decoder --> Sanitizer["OpenVPN 2.6+ Cipher & TLS Patcher"]
+    AppFinder --> WebGUI
+    Tray --> WebGUI
+    CLI --> Core["Core VPN Engine (guangut/cli.py)"]
+    WebGUI --> Core
+
+    subgraph HarvesterModule ["Harvester & Geolocation Engine"]
+        Feeds["VPN Gate API + Community Pools + VPNBook Scraper"] --> Harvester["guangut/harvester.py"]
+        Harvester --> GeoIP["HTTPS GeoIP Classifier (guangut/regions.py)"]
+        GeoIP --> Prober["Parallel Socket Latency Prober"]
     end
 
-    subgraph Network ["3. Linux Kernel Tunnel & Security Layer"]
-        Sanitizer --> Tunnel["OpenVPN (tun0) / WireGuard (wg0) Daemon"]
-        Tunnel --> DNS["DNS Leak Guard (resolvectl / resolv.conf)"]
-        Tunnel --> Firewall["nftables Kill Switch & IPv6 Leak Blocker"]
-        Tunnel --> Verifier["Public IP & Geo-Location Verifier"]
+    Core --> HarvesterModule
+
+    subgraph SecurityModule ["Security & Kernel Network Stack"]
+        Prober --> Patcher["OpenVPN 2.6+ Patcher (guangut/patcher.py)"]
+        Patcher --> Tunnel["Tunnel Daemon: OpenVPN (tun0) / WireGuard (wg0)"]
+        Tunnel --> KillSwitch["nftables Kill Switch (guangut/security.py)"]
+        Tunnel --> DNSGuard["DNS Leak Guard (resolvectl / resolv.conf)"]
+        Tunnel --> Shield["GuangutShield DNS AdBlock (guangut/adblock.py)"]
+    end
+
+    subgraph Supervisor ["Autonomous Supervisor"]
+        Watchdog["Watchdog Daemon (guangut/watchdog.py)"] -.->|Health Check / Auto-Recovery| Tunnel
     end
 ```
-
----
-
-## 4. System Requirements (Target Environment: Debian GNU/Linux 13 Trixie)
-
-### 4.1 Already Installed on Your Machine (Verified)
-- **OS**: Debian GNU/Linux 13 (`trixie`)
-- **Python**: `python3` (`/usr/bin/python3`) & `pip3` (`/usr/bin/pip3`)
-- **Network Stack**: `iproute2` (`/usr/bin/ip`), `NetworkManager` (`/usr/bin/nmcli`), `nftables` (`/usr/sbin/nft`)
-- **Utilities**: `curl`, `git`, `node`
-
-### 4.2 Packages to Install via `apt`
-To establish real kernel-level VPN tunnels, we need the userspace tunnel binaries installed:
-```bash
-sudo apt update && sudo apt install -y openvpn wireguard-tools openresolv python3-venv python3-rich python3-requests
-```
-*(Note: If you prefer using a Python `venv` inside `/home/yona/Projects/GuangutVPN`, `rich`, `requests`, and `textual`/`flask` will be installed cleanly in `.venv`.)*
-
-### 4.3 Privileges Requirement
-- Creating network interfaces (`tun0` / `wg0`), updating routing tables (`ip route`), and configuring `nftables` kill-switch rules require `sudo` / `root` privileges during tunnel activation and teardown.
-- All server discovery, US region filtering, speed probing, and `.ovpn` patching run safely as your normal user (`yona`).
-
----
-
-## 5. Core Features We Will Build in `/home/yona/Projects/GuangutVPN`
-
-1. **US-First Smart Server Discovery (`us-all`, `us-east`, `us-central`, `us-west`, or specific US State/City)**:
-   - Fetches live VPN nodes, filters for `CountryShort == "US"` by default, resolves exact US State & City coordinates, tests live TCP socket handshake latency (so dead servers are skipped immediately), and ranks them by speed and uptime score.
-2. **Global Country Expansion (`--country <CODE>`)**:
-   - Instant support for non-US countries (`JP`, `DE`, `GB`, `CA`, `KR`, `SG`, etc.) or listing all available countries dynamically.
-3. **OpenVPN 2.6+ Auto-Patcher (`patcher.py`)**:
-   - Automatically reverse-engineers and rewrites legacy `.ovpn` configs so they connect cleanly on Debian 13 without cipher, TLS, or routing errors.
-4. **Auto-Failover & Connection Watchdog**:
-   - If the top-ranked US server fails handshake within 12 seconds, GuangutVPN automatically rolls over to the next fastest verified US server until `tun0` is up.
-5. **Kill Switch & DNS/IPv6 Leak Protection (`security.py`)**:
-   - Configures `nftables` rules to prevent traffic leaks outside `tun0` and disables IPv6 leaks while connected, restoring original network state cleanly on disconnect.
-6. **Interactive TUI / CLI + Optional Local Web Dashboard**:
-   - Clean command-line interface (`guangut connect --us`, `guangut connect --us-region west`, `guangut connect --country JP`, `guangut status`, `guangut disconnect`) plus an interactive terminal dashboard showing live throughput, public IP verification, US state/city location, and connection timer.
-

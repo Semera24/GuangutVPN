@@ -1,29 +1,32 @@
 # 🛡️ GuangutVPN
 
-**GuangutVPN** is a native Linux Kernel VPN client, US Regional/State GeoIP Harvester, and Automated OpenVPN 2.6+ Configuration Patcher built for **Debian GNU/Linux 13 (Trixie)**.
+**GuangutVPN** is a self-hosted, 100% free and open-source Linux kernel VPN system, US Regional/State GeoIP Harvester, and Automated OpenVPN 2.6+ / WireGuard Patcher built for **Debian GNU/Linux 13 (Trixie)** and modern Linux desktop environments (Xfce, GNOME, KDE).
+
+GuangutVPN combines the performance and security features of the top commercial VPN services (NordVPN, ExpressVPN, ProtonVPN) into a self-contained Linux client with **no subscription fees, no accounts, and zero logging**.
 
 ---
 
-## ✨ Key Features
+## 🏆 Commercial VPN Features vs. GuangutVPN
 
-1. **🇺🇸 All-US & Part-of-US (Region / State) Targeting**:
-   - **All-US (`--us-region all`)**: Concurrent socket probing across all United States servers to pick the fastest live relay.
-   - **Part-of-US (`--us-region west|central|east|south|northeast|midwest`)**: Route specifically through US-West (`CA`, `CO`, `WA`, `OR`), US-Central (`TX`, `IL`), or US-East (`NY`, `VA`, `FL`, `DC`).
-   - **Specific US State (`--state CA`, `--state TX`, `--state CO`)**: Target individual US states with automatic nearest-state Haversine distance fallback.
-2. **🌐 Global Country Option (`--country <CODE>`)**:
-   - Switch to **15+ other countries** (`JP`, `KR`, `GB`, `DE`, `FR`, `TH`, `VN`, `RO`, `RU`, `AU`, `IN`, `AE`, etc.) anytime.
-3. **🔧 Reverse-Engineered OpenVPN 2.6+ Auto-Patcher (`guangut/patcher.py`)**:
-   - Automatically strips Windows-only directives (`win-sys`, `register-dns`) and injects `data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-256-CBC:AES-128-CBC`, `data-ciphers-fallback`, `tls-version-min 1.0`, `redirect-gateway def1`, `block-ipv6`, and leak-free DNS (`1.1.1.1`, `8.8.8.8`).
-4. **🖥️ 3 Ways to Use It**:
-   - **Rich CLI** (`guangut connect`, `guangut list`, `guangut status`, `guangut disconnect`)
-   - **Interactive Terminal Dashboard** (`guangut` or `guangut menu`)
-   - **Local Web GUI Control Center** (`guangut gui` -> opens `http://127.0.0.1:8765`)
+| Commercial Feature (Nord / Proton / Express) | GuangutVPN Implementation | Location in Codebase |
+| :--- | :--- | :--- |
+| **Layer-3 Kernel Tunneling** | Native OpenVPN 2.6+ (`tun0`) and WireGuard (`wg0`) | [`guangut/tunnel.py`](guangut/tunnel.py), [`guangut/wireguard.py`](guangut/wireguard.py) |
+| **All-US & US Regional Targeting** | Multi-threaded GeoIP classifier: US-West, US-Central, US-East + 50 states | [`guangut/regions.py`](guangut/regions.py), [`guangut/harvester.py`](guangut/harvester.py) |
+| **Global Country Expansion** | 15+ countries (`JP`, `KR`, `GB`, `DE`, `FR`, `TH`, `VN`, `RO`, etc.) | [`guangut/harvester.py`](guangut/harvester.py) |
+| **NetShield / CleanWeb Ad Blocker** | **GuangutShield**: Zero-latency DNS ad & tracker blocker (1-click toggle) | [`guangut/adblock.py`](guangut/adblock.py) |
+| **Automatic Watchdog & Failover** | Background daemon supervising tunnel health with auto-recovery | [`guangut/watchdog.py`](guangut/watchdog.py) |
+| **Firewall Kill Switch** | Kernel `nftables` output filter dropping all unencrypted non-tunnel packets | [`guangut/security.py`](guangut/security.py) |
+| **DNS Leak Guard** | Automated `systemd-resolved` interface binding (`resolvectl`) + `/etc/resolv.conf` lock | [`guangut/security.py`](guangut/security.py) |
+| **System Tray Status Pill** | Native GTK3 taskbar applet with dynamic icon and right-click quick connect | [`guangut/tray.py`](guangut/tray.py) |
+| **Local Web Control Center** | Zero-dependency dark-mode Web GUI dashboard (`http://127.0.0.1:8765`) | [`guangut/gui.py`](guangut/gui.py) |
+| **Dynamic Credentials Scraper** | Live password scraping from high-speed sources (e.g. VPNBook US) | [`guangut/sources.py`](guangut/sources.py) |
+| **Split-Tunneling Browser Mode** | Dedicated browser runner routing directly through the active VPN exit | [`guangut/splittunnel.py`](guangut/splittunnel.py) |
 
 ---
 
-## 🚀 Step 1: One-Time System Package Installation
+## 🚀 Quick Start: Installation
 
-Run the installer script in your terminal (it will prompt for your `sudo` password to install `openvpn`, `wireguard-tools`, and `openresolv`, and link `guangut` to `/usr/local/bin`):
+Run the automated installer script in your terminal (elevates with `sudo` to configure system binaries, desktop icon, and passwordless tunnel permissions):
 
 ```bash
 cd /home/yona/Projects/GuangutVPN
@@ -32,52 +35,93 @@ sudo ./install.sh
 
 ---
 
-## 💻 Step 2: Usage Examples
+## 💻 How to Use GuangutVPN
 
-### A. Connect to United States (All-US or Part-of-US)
+### 1. Launch from Desktop (Xfce / Applications Menu)
+- Open your Application Finder or Menu $\rightarrow$ Search **GuangutVPN** $\rightarrow$ Click to launch the Web GUI Control Center directly in your browser (`http://127.0.0.1:8765`).
+
+### 2. Connect via CLI (All-US or Part-of-US)
 ```bash
-# Connect to the fastest US server (All-US)
+# Connect to fastest US server (All-US socket probe)
 sudo guangut connect
 
-# Connect to US-West (California / Colorado / West Coast)
-sudo guangut connect --us-region west
+# Connect to a specific US Region
+sudo guangut connect --us-region west      # California / Colorado / West Coast
+sudo guangut connect --us-region central   # Texas / Central US
+sudo guangut connect --us-region east      # East Coast
 
-# Connect to US-Central (Texas / Central US)
-sudo guangut connect --us-region central
-
-# Connect to a specific US State (e.g., California, Colorado, Texas)
+# Connect to a specific US State
 sudo guangut connect --state CA
-sudo guangut connect --state CO
 sudo guangut connect --state TX
+sudo guangut connect --state CO
 
 # Connect with Kernel nftables Kill Switch enabled
 sudo guangut connect --us-region west --killswitch
 ```
 
-### B. Connect to Other Countries (Global Option)
+### 3. Connect to Other Countries (Global Mode)
 ```bash
 # List all available countries and server counts
 guangut list --countries
 
-# Connect to Japan, South Korea, UK, Germany, France, etc.
-sudo guangut connect --country JP
-sudo guangut connect --country KR
-sudo guangut connect --country GB
-sudo guangut connect --country DE
+# Connect to specific countries
+sudo guangut connect --country JP          # Japan
+sudo guangut connect --country KR          # South Korea
+sudo guangut connect --country GB          # United Kingdom
+sudo guangut connect --country DE          # Germany
 ```
 
-### C. Check Status, Launch Web GUI, or Disconnect
+### 4. Commercial Features: AdBlock, Watchdog & System Tray
 ```bash
-# Check tunnel interface (tun0), uptime, and verified public exit IP
+# Enable / Toggle GuangutShield DNS Ad & Tracker Blocker
+sudo guangut adblock
+sudo guangut adblock --disable
+
+# Launch the Health Watchdog & Auto-Failover Daemon
+sudo guangut watch --country US --us-region west &
+
+# Launch Desktop System Tray Status Pill (GTK3 panel applet)
+guangut tray &
+
+# Launch dedicated browser instance through the VPN
+guangut browser --url https://ipinfo.io
+```
+
+### 5. Check Status or Disconnect
+```bash
+# View tunnel interface (tun0), PID, and verified exit IP/Location
 guangut status
-
-# Launch the interactive Terminal Dashboard
-guangut menu
-
-# Launch the Local Web GUI Dashboard in your browser (http://127.0.0.1:8765)
-sudo guangut gui
 
 # Disconnect VPN and restore system DNS & firewall
 sudo guangut disconnect
 ```
 
+---
+
+## 📁 Repository Architecture
+
+```text
+GuangutVPN/
+├── guangut/                     # Core VPN Engine
+│   ├── adblock.py               # GuangutShield DNS ad & malware blocker
+│   ├── cli.py                   # CLI parser & interactive terminal dashboard
+│   ├── gui.py                   # Local Web GUI dashboard server (port 8765)
+│   ├── harvester.py             # Multi-source server harvester & socket prober
+│   ├── patcher.py               # OpenVPN 2.6+ reverse-engineering config patcher
+│   ├── regions.py               # US State/Region classifier & Haversine distance
+│   ├── security.py              # nftables Kill Switch & DNS Leak Guard
+│   ├── sources.py               # High-speed dynamic scrapers (VPNBook US)
+│   ├── splittunnel.py           # Split-tunneling & dedicated browser launcher
+│   ├── tray.py                  # GTK3 Desktop System Tray applet
+│   ├── tunnel.py                # OpenVPN daemon lifecycle & GeoIP verifier
+│   ├── watchdog.py              # Auto-reconnect health watchdog daemon
+│   └── wireguard.py             # WireGuard (wg0) kernel tunnel controller
+├── configs/                     # Pre-exported patched US profiles (CA, TX, CO)
+├── install.sh                   # System installer & launcher configurator
+├── guangutvpn-gui-wrapper.sh    # Non-blocking desktop GUI launcher
+├── guangutvpn.desktop           # Freedesktop / Xfce application launcher
+├── guangutvpn.svg               # Application vector icon
+├── test_guangut.py              # Automated unit test suite
+├── vpnPlan.md                   # System architecture specification
+└── vpnPlanRoadMap.md            # Detailed engineering roadmap
+```
