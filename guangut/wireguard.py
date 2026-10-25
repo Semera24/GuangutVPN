@@ -66,3 +66,4 @@ def disconnect_wireguard() -> Tuple[bool, str]:
     if proc.returncode == 0:
         return True, "WireGuard wg0 disconnected."
     return False, "WireGuard interface was not active."
+

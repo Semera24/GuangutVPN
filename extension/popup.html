@@ -17,7 +17,7 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      width: 350px;
+      width: 360px;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -95,6 +95,17 @@
       margin-top: 6px;
       word-break: break-all;
     }
+    .notice {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 6px;
+      padding: 8px;
+      margin-top: 10px;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      line-height: 1.35;
+    }
+    .notice strong { color: #38bdf8; }
   </style>
 </head>
 <body>
@@ -112,19 +123,19 @@
     <div class="stat-row"><span class="label">Active Node</span><span class="value" id="ext-node">Direct (Unprotected)</span></div>
   </div>
 
-  <div style="font-size:0.75rem; font-weight:700; margin-bottom:6px; color:var(--muted);">1-CLICK US REGION &amp; STATE</div>
+  <div style="font-size:0.75rem; font-weight:700; margin-bottom:6px; color:var(--muted);">1-CLICK VERIFIED US REGIONS</div>
   <div class="btn-group">
     <button class="primary" id="btn-us-ca">[CA] California</button>
-    <button id="btn-us-ny">[NY] New York</button>
     <button id="btn-us-va">[VA] Virginia</button>
+    <button id="btn-us-wa">[WA] Washington</button>
   </div>
   <div class="btn-group">
-    <button id="btn-us-tx">[TX] Texas</button>
-    <button id="btn-us-il">[IL] Chicago</button>
-    <button id="btn-us-nj">[NJ] New Jersey</button>
+    <button id="btn-us-az">[AZ] Arizona</button>
+    <button id="btn-us-oh">[OH] Ohio</button>
+    <button id="btn-us-fl">[FL] Florida</button>
   </div>
 
-  <div style="font-size:0.75rem; font-weight:700; margin-bottom:6px; color:var(--muted); margin-top:8px;">SELECT COUNTRY &amp; US STATE</div>
+  <div style="font-size:0.75rem; font-weight:700; margin-bottom:6px; color:var(--muted); margin-top:8px;">ALL VERIFIED US SERVERS</div>
   <select id="server-picker">
     <option value="">Loading servers...</option>
   </select>
@@ -134,7 +145,11 @@
     <button class="danger" id="btn-disconnect">[X] Disconnect</button>
   </div>
 
-  <div id="status-msg">Ready. Pick any US State or Country above.</div>
+  <div id="status-msg">Ready. Pick any US State above.</div>
+
+  <div class="notice">
+    <strong>💡 Scope Note:</strong> This extension routes Chrome web browsing. For <strong>Telegram Desktop, Terminal, & System Apps</strong>, run GuangutVPN Native on your Mac!
+  </div>
 
   <script src="popup.js"></script>
 </body>

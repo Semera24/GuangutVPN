@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const opt = document.createElement("option");
         opt.value = idx;
         const tag = s.country === "US" ? `[US - ${s.state || s.city}]` : `[${s.country}]`;
-        opt.textContent = `${tag} ${s.name}`;
+        opt.textContent = `${tag} ${s.name} (${s.scheme.toUpperCase()})`;
         picker.appendChild(opt);
       });
     }
@@ -45,8 +45,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         extNode.textContent = "Direct (Unprotected)";
       }
       if (res.ipInfo) {
-        extIp.textContent = res.ipInfo.ip;
-        extLoc.textContent = [res.ipInfo.city, res.ipInfo.region, res.ipInfo.country].filter(Boolean).join(", ");
+        extIp.textContent = res.ipInfo.ip || "—";
+        extLoc.textContent = [res.ipInfo.city, res.ipInfo.region, res.ipInfo.country].filter(Boolean).join(", ") || "United States";
       }
     });
   }
@@ -57,8 +57,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     picker.value = idx;
     setLog(`Connecting to ${srv.name}...`);
     chrome.runtime.sendMessage({ action: "connectServer", server: srv }, (res) => {
-      setLog(res ? res.message : "Connecting...");
-      setTimeout(refreshUI, 1500);
+      setLog(res ? res.message : "Connected");
+      setTimeout(refreshUI, 1000);
+      setTimeout(refreshUI, 2500);
     });
   }
 
@@ -67,39 +68,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Quick State Buttons
-  document.getElementById("btn-us-ca").addEventListener("click", () => {
-    const idx = findServerIndex("CA");
-    if (idx !== -1) connectByIndex(idx);
-  });
+  const bindBtn = (id, state) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("click", () => {
+        const idx = findServerIndex(state);
+        if (idx !== -1) connectByIndex(idx);
+      });
+    }
+  };
 
-  document.getElementById("btn-us-ny").addEventListener("click", () => {
-    const idx = findServerIndex("NY");
-    if (idx !== -1) connectByIndex(idx);
-  });
-
-  document.getElementById("btn-us-va").addEventListener("click", () => {
-    const idx = findServerIndex("VA");
-    if (idx !== -1) connectByIndex(idx);
-  });
-
-  document.getElementById("btn-us-tx").addEventListener("click", () => {
-    const idx = findServerIndex("TX");
-    if (idx !== -1) connectByIndex(idx);
-  });
-
-  document.getElementById("btn-us-il").addEventListener("click", () => {
-    const idx = findServerIndex("IL");
-    if (idx !== -1) connectByIndex(idx);
-  });
-
-  document.getElementById("btn-us-nj").addEventListener("click", () => {
-    const idx = findServerIndex("NJ");
-    if (idx !== -1) connectByIndex(idx);
-  });
+  bindBtn("btn-us-ca", "CA");
+  bindBtn("btn-us-va", "VA");
+  bindBtn("btn-us-wa", "WA");
+  bindBtn("btn-us-az", "AZ");
+  bindBtn("btn-us-oh", "OH");
+  bindBtn("btn-us-fl", "FL");
 
   document.getElementById("btn-connect").addEventListener("click", () => {
     const idx = parseInt(picker.value, 10);
-    if (!isNaN(idx)) {
+    if (!isNaN(idx) && serverList[idx]) {
       connectByIndex(idx);
     }
   });
@@ -108,9 +96,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     setLog("Disconnecting...");
     chrome.runtime.sendMessage({ action: "disconnect" }, (res) => {
       setLog(res ? res.message : "Disconnected");
-      refreshUI();
+      setTimeout(refreshUI, 800);
     });
   });
 
+  // Initial render
   refreshUI();
+  setInterval(refreshUI, 5000);
 });

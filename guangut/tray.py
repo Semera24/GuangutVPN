@@ -94,3 +94,4 @@ def run_tray():
 
 if __name__ == "__main__":
     sys.exit(run_tray())
+

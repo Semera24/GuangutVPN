@@ -7,9 +7,10 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({
     connected: false,
     targetCountry: "US",
-    targetState: "",
+    targetState: "CA",
     selectedServerName: "United States (All / Fastest)",
-    activeProxy: null
+    activeProxy: null,
+    lastExitIp: null
   });
 });
 
@@ -42,37 +43,83 @@ async function loadBundledServers() {
   }
 }
 
+async function fetchWithTimeout(url, ms = 2500) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function detectExitIP() {
+  // Provider 1: ipwho.is
+  try {
+    const data = await fetchWithTimeout("https://ipwho.is/", 2500);
+    if (data && data.success) {
+      return {
+        ip: data.ip,
+        city: data.city || "",
+        region: data.region || "",
+        country: data.country || "United States"
+      };
+    }
+  } catch (e) {}
+
+  // Provider 2: ipinfo.io
+  try {
+    const data = await fetchWithTimeout("https://ipinfo.io/json", 2500);
+    if (data && data.ip) {
+      return {
+        ip: data.ip,
+        city: data.city || "",
+        region: data.region || "",
+        country: data.country || "US"
+      };
+    }
+  } catch (e) {}
+
+  // Provider 3: api.ipify.org
+  try {
+    const data = await fetchWithTimeout("https://api.ipify.org?format=json", 2000);
+    if (data && data.ip) {
+      return { ip: data.ip, city: "", region: "", country: "United States" };
+    }
+  } catch (e) {}
+
+  return null;
+}
+
 async function handleGetStatus() {
   const store = await chrome.storage.local.get([
     "connected",
     "targetCountry",
     "targetState",
     "selectedServerName",
-    "activeProxy"
+    "activeProxy",
+    "lastExitIp"
   ]);
-  let ipInfo = null;
-  try {
-    const res = await fetch("https://ipwho.is/", { cache: "no-store" });
-    const data = await res.json();
-    if (data && data.success) {
-      ipInfo = {
-        ip: data.ip,
-        city: data.city,
-        region: data.region,
-        country: data.country
-      };
-    }
-  } catch (e) {}
+
+  let ipInfo = await detectExitIP();
+  if (ipInfo) {
+    await chrome.storage.local.set({ lastExitIp: ipInfo.ip });
+  } else if (store.lastExitIp) {
+    ipInfo = { ip: store.lastExitIp, city: store.targetState || "", region: "US", country: "United States" };
+  }
+
   return { ...store, ipInfo };
 }
 
-function applyBrowserProxy(host, port, scheme = "socks5") {
+function applyBrowserProxy(host, port, scheme = "http") {
   return new Promise((resolve, reject) => {
+    const proxyScheme = scheme.toLowerCase().startsWith("sock") ? "socks5" : "http";
     const config = {
       mode: "fixed_servers",
       rules: {
         singleProxy: {
-          scheme: scheme,
+          scheme: proxyScheme,
           host: host,
           port: parseInt(port, 10)
         },
@@ -100,13 +147,14 @@ async function handleConnectServer(srv) {
   } catch (e) {}
 
   try {
-    await applyBrowserProxy(srv.host, srv.port, srv.scheme || "socks5");
+    await applyBrowserProxy(srv.host, srv.port, srv.scheme || "http");
     await chrome.storage.local.set({
       connected: true,
       targetCountry: srv.country,
       targetState: srv.state || srv.city,
       selectedServerName: srv.name,
-      activeProxy: `${srv.scheme.toUpperCase()}://${srv.host}:${srv.port}`
+      activeProxy: `${(srv.scheme || "http").toUpperCase()}://${srv.host}:${srv.port}`,
+      lastExitIp: srv.ip || srv.host
     });
     return {
       ok: true,

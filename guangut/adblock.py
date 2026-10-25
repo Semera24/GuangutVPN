@@ -88,3 +88,4 @@ def remove_adblock_protection() -> bool:
         return True
     except Exception:
         return False
+
