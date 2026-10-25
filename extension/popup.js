@@ -4,11 +4,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   const badge = document.getElementById("conn-badge");
   const extIp = document.getElementById("ext-ip");
   const extLoc = document.getElementById("ext-loc");
-  const extMode = document.getElementById("ext-mode");
+  const extNode = document.getElementById("ext-node");
   const msg = document.getElementById("status-msg");
+  const picker = document.getElementById("server-picker");
 
-  const countryPicker = document.getElementById("country-picker");
-  const statePicker = document.getElementById("state-picker");
+  let serverList = [];
+
+  function setLog(text) {
+    msg.textContent = text;
+  }
+
+  // Load server list from extension
+  chrome.runtime.sendMessage({ action: "getServers" }, (servers) => {
+    if (Array.isArray(servers) && servers.length) {
+      serverList = servers;
+      picker.innerHTML = "";
+      servers.forEach((s, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        const tag = s.country === "US" ? `[US - ${s.state || s.city}]` : `[${s.country}]`;
+        opt.textContent = `${tag} ${s.name}`;
+        picker.appendChild(opt);
+      });
+    }
+  });
 
   async function refreshUI() {
     chrome.runtime.sendMessage({ action: "getStatus" }, (res) => {
@@ -16,49 +35,73 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (res.connected) {
         badge.className = "badge connected";
         badge.textContent = "[ONLINE]";
-        extMode.textContent = `${res.targetCountry || "US"} (${res.targetRegion || res.targetState || "all"})`;
+        extNode.textContent = res.selectedServerName || res.targetCountry;
         if (res.activeProxy) {
-          setLog(`Routing via: ${res.activeProxy}`);
+          setLog(`Active: ${res.selectedServerName} (${res.activeProxy})`);
         }
       } else {
         badge.className = "badge disconnected";
         badge.textContent = "[OFFLINE]";
-        extMode.textContent = "Direct (Unprotected)";
+        extNode.textContent = "Direct (Unprotected)";
       }
       if (res.ipInfo) {
         extIp.textContent = res.ipInfo.ip;
-        extLoc.textContent = `${res.ipInfo.city || ""}, ${res.ipInfo.region || ""}, ${res.ipInfo.country || ""}`;
+        extLoc.textContent = [res.ipInfo.city, res.ipInfo.region, res.ipInfo.country].filter(Boolean).join(", ");
       }
     });
   }
 
-  function setLog(text) {
-    msg.textContent = text;
+  function connectByIndex(idx) {
+    const srv = serverList[idx];
+    if (!srv) return;
+    picker.value = idx;
+    setLog(`Connecting to ${srv.name}...`);
+    chrome.runtime.sendMessage({ action: "connectServer", server: srv }, (res) => {
+      setLog(res ? res.message : "Connecting...");
+      setTimeout(refreshUI, 1500);
+    });
   }
 
-  // Quick buttons
-  document.getElementById("btn-us-all").addEventListener("click", () => {
-    countryPicker.value = "US";
-    statePicker.value = "";
-    triggerConnect("US", "all", "");
+  function findServerIndex(stateCode) {
+    return serverList.findIndex((s) => s.state === stateCode);
+  }
+
+  // Quick State Buttons
+  document.getElementById("btn-us-ca").addEventListener("click", () => {
+    const idx = findServerIndex("CA");
+    if (idx !== -1) connectByIndex(idx);
   });
 
-  document.getElementById("btn-us-west").addEventListener("click", () => {
-    countryPicker.value = "US";
-    statePicker.value = "CA";
-    triggerConnect("US", "west", "CA");
+  document.getElementById("btn-us-ny").addEventListener("click", () => {
+    const idx = findServerIndex("NY");
+    if (idx !== -1) connectByIndex(idx);
   });
 
-  document.getElementById("btn-us-central").addEventListener("click", () => {
-    countryPicker.value = "US";
-    statePicker.value = "TX";
-    triggerConnect("US", "central", "TX");
+  document.getElementById("btn-us-va").addEventListener("click", () => {
+    const idx = findServerIndex("VA");
+    if (idx !== -1) connectByIndex(idx);
+  });
+
+  document.getElementById("btn-us-tx").addEventListener("click", () => {
+    const idx = findServerIndex("TX");
+    if (idx !== -1) connectByIndex(idx);
+  });
+
+  document.getElementById("btn-us-il").addEventListener("click", () => {
+    const idx = findServerIndex("IL");
+    if (idx !== -1) connectByIndex(idx);
+  });
+
+  document.getElementById("btn-us-nj").addEventListener("click", () => {
+    const idx = findServerIndex("NJ");
+    if (idx !== -1) connectByIndex(idx);
   });
 
   document.getElementById("btn-connect").addEventListener("click", () => {
-    const c = countryPicker.value;
-    const s = statePicker.value.trim();
-    triggerConnect(c, c === "US" ? "all" : "", s);
+    const idx = parseInt(picker.value, 10);
+    if (!isNaN(idx)) {
+      connectByIndex(idx);
+    }
   });
 
   document.getElementById("btn-disconnect").addEventListener("click", () => {
@@ -69,20 +112,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  function triggerConnect(country, us_region, state) {
-    setLog(`Connecting to ${country} (${us_region || state || "best"})...`);
-    chrome.runtime.sendMessage(
-      {
-        action: "connect",
-        params: { country, us_region, state }
-      },
-      (res) => {
-        setLog(res ? res.message : "Connect request sent");
-        setTimeout(refreshUI, 1200);
-      }
-    );
-  }
-
   refreshUI();
 });
-

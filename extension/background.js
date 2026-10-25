@@ -2,14 +2,13 @@
 // Configures real proxy routing via chrome.proxy and synchronizes with local backend
 
 const BACKEND_URL = "http://127.0.0.1:8765";
-const PROXY_LIST_URL = "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies.json";
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({
     connected: false,
     targetCountry: "US",
-    targetRegion: "all",
     targetState: "",
+    selectedServerName: "United States (All / Fastest)",
     activeProxy: null
   });
 });
@@ -19,8 +18,12 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     handleGetStatus().then(sendResponse);
     return true;
   }
-  if (req.action === "connect") {
-    handleConnect(req.params).then(sendResponse);
+  if (req.action === "getServers") {
+    loadBundledServers().then(sendResponse);
+    return true;
+  }
+  if (req.action === "connectServer") {
+    handleConnectServer(req.server).then(sendResponse);
     return true;
   }
   if (req.action === "disconnect") {
@@ -29,8 +32,24 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
   }
 });
 
+async function loadBundledServers() {
+  try {
+    const url = chrome.runtime.getURL("servers.json");
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    return [];
+  }
+}
+
 async function handleGetStatus() {
-  const store = await chrome.storage.local.get(["connected", "targetCountry", "targetRegion", "targetState", "activeProxy"]);
+  const store = await chrome.storage.local.get([
+    "connected",
+    "targetCountry",
+    "targetState",
+    "selectedServerName",
+    "activeProxy"
+  ]);
   let ipInfo = null;
   try {
     const res = await fetch("https://ipwho.is/", { cache: "no-store" });
@@ -70,99 +89,32 @@ function applyBrowserProxy(host, port, scheme = "socks5") {
   });
 }
 
-async function fetchCandidateProxy(country = "US", region = "all", state = "") {
+async function handleConnectServer(srv) {
+  // If local GuangutVPN backend is running on port 8765, signal it
   try {
-    const res = await fetch(PROXY_LIST_URL, { cache: "no-store" });
-    const list = await res.json();
-    if (Array.isArray(list)) {
-      // Filter by country (e.g. US)
-      let matched = list.filter(p => {
-        const cCode = p.geolocation?.country?.iso_code;
-        return cCode && cCode.toUpperCase() === country.toUpperCase();
-      });
-
-      if (!matched.length && country !== "US") {
-        matched = list.filter(p => p.geolocation?.country?.iso_code === "US");
-      }
-
-      // Filter by state if provided
-      if (state && state.trim()) {
-        const stLower = state.toLowerCase().trim();
-        const stateMatched = matched.filter(p => {
-          const cName = (p.geolocation?.city?.names?.en || "").toLowerCase();
-          return cName.includes(stLower);
-        });
-        if (stateMatched.length) matched = stateMatched;
-      }
-
-      // Prefer SOCKS5 or HTTPS
-      matched.sort((a, b) => {
-        const score = (p) => (p.protocol === "socks5" ? 3 : p.protocol === "https" ? 2 : p.protocol === "http" ? 1 : 0);
-        return score(b) - score(a);
-      });
-
-      if (matched.length) {
-        const p = matched[0];
-        const scheme = p.protocol === "socks4" ? "socks4" : p.protocol === "socks5" ? "socks5" : "http";
-        return {
-          host: p.host,
-          port: p.port,
-          scheme: scheme,
-          city: p.geolocation?.city?.names?.en || country
-        };
-      }
-    }
-  } catch (e) {}
-  return null;
-}
-
-async function handleConnect(params) {
-  const country = params.country || "US";
-  const region = params.us_region || "all";
-  const state = params.state || "";
-
-  // 1. Try local GuangutVPN daemon on port 8765 first if running
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/connect`, {
+    await fetch(`${BACKEND_URL}/api/connect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params)
+      body: JSON.stringify({ country: srv.country, state: srv.state })
     });
-    const data = await res.json();
-    if (data && data.ok) {
-      await chrome.storage.local.set({
-        connected: true,
-        targetCountry: country,
-        targetRegion: region,
-        targetState: state,
-        activeProxy: "Local Daemon (tun0)"
-      });
-      return { ok: true, message: `Connected via Local Daemon: ${data.message}` };
-    }
   } catch (e) {}
 
-  // 2. Standalone Browser Extension Mode: apply real cloud proxy into chrome.proxy
-  const candidate = await fetchCandidateProxy(country, region, state);
-  if (candidate) {
-    try {
-      await applyBrowserProxy(candidate.host, candidate.port, candidate.scheme);
-      await chrome.storage.local.set({
-        connected: true,
-        targetCountry: country,
-        targetRegion: region,
-        targetState: state,
-        activeProxy: `${candidate.scheme}://${candidate.host}:${candidate.port}`
-      });
-      return {
-        ok: true,
-        message: `Connected: ${candidate.scheme.toUpperCase()}://${candidate.host}:${candidate.port} (${candidate.city})`
-      };
-    } catch (err) {
-      return { ok: false, message: `Proxy setup error: ${err.message || err}` };
-    }
+  try {
+    await applyBrowserProxy(srv.host, srv.port, srv.scheme || "socks5");
+    await chrome.storage.local.set({
+      connected: true,
+      targetCountry: srv.country,
+      targetState: srv.state || srv.city,
+      selectedServerName: srv.name,
+      activeProxy: `${srv.scheme.toUpperCase()}://${srv.host}:${srv.port}`
+    });
+    return {
+      ok: true,
+      message: `Connected: ${srv.name} (${srv.host}:${srv.port})`
+    };
+  } catch (err) {
+    return { ok: false, message: `Proxy setup error: ${err.message || err}` };
   }
-
-  return { ok: false, message: "No live proxy relays reachable right now. Try again." };
 }
 
 async function handleDisconnect() {

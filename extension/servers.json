@@ -1,0 +1,92 @@
+[
+  {
+    "name": "United States (All / Fastest)",
+    "country": "US",
+    "state": "",
+    "city": "Fastest US Route",
+    "scheme": "socks5",
+    "host": "107.174.30.92",
+    "port": 1080
+  },
+  {
+    "name": "California (Silicon Valley / San Jose)",
+    "country": "US",
+    "state": "CA",
+    "city": "Santa Clara",
+    "scheme": "socks5",
+    "host": "142.171.127.14",
+    "port": 1080
+  },
+  {
+    "name": "New York / East Coast (Buffalo)",
+    "country": "US",
+    "state": "NY",
+    "city": "Buffalo",
+    "scheme": "socks5",
+    "host": "107.174.30.92",
+    "port": 1080
+  },
+  {
+    "name": "Virginia / DC Metro (Ashburn)",
+    "country": "US",
+    "state": "VA",
+    "city": "Ashburn",
+    "scheme": "socks5",
+    "host": "20.121.179.183",
+    "port": 3001
+  },
+  {
+    "name": "New Jersey (Newark)",
+    "country": "US",
+    "state": "NJ",
+    "city": "Newark",
+    "scheme": "socks5",
+    "host": "31.44.5.192",
+    "port": 1081
+  },
+  {
+    "name": "Illinois / Chicago",
+    "country": "US",
+    "state": "IL",
+    "city": "Chicago",
+    "scheme": "socks5",
+    "host": "144.202.10.155",
+    "port": 1080
+  },
+  {
+    "name": "Texas / Dallas",
+    "country": "US",
+    "state": "TX",
+    "city": "Dallas",
+    "scheme": "http",
+    "host": "104.28.211.105",
+    "port": 443
+  },
+  {
+    "name": "Japan (Tokyo)",
+    "country": "JP",
+    "state": "",
+    "city": "Tokyo",
+    "scheme": "socks5",
+    "host": "133.18.234.13",
+    "port": 1080
+  },
+  {
+    "name": "United Kingdom (London)",
+    "country": "GB",
+    "state": "",
+    "city": "London",
+    "scheme": "socks5",
+    "host": "51.89.255.67",
+    "port": 1080
+  },
+  {
+    "name": "Germany (Frankfurt)",
+    "country": "DE",
+    "state": "",
+    "city": "Frankfurt",
+    "scheme": "socks5",
+    "host": "159.69.153.169",
+    "port": 1080
+  }
+]
